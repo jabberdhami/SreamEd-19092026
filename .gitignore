@@ -1,5 +1,6 @@
 node_modules/
 Videos/
+data/
 yt-dlp.exe
 .DS_Store
 data.json

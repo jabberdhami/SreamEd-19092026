@@ -451,6 +451,82 @@ app.delete('/api/video', requireAuth, requireVideoManagement, (req, res) => {
   }
 });
 
+app.delete('/api/folder', requireAuth, requireVideoManagement, (req, res) => {
+  const { folderPath } = req.body;
+  if (!folderPath) return res.status(400).json({ error: 'Folder path required' });
+  
+  const fullPath = path.join(BASE_DIR, folderPath);
+  const normalizedPath = path.normalize(fullPath);
+  if (!normalizedPath.startsWith(BASE_DIR) || normalizedPath === BASE_DIR) {
+      return res.status(403).json({ error: 'Invalid path' });
+  }
+  
+  try {
+      if (fs.existsSync(normalizedPath)) {
+          fs.rmSync(normalizedPath, { recursive: true, force: true });
+          broadcastEvent('refresh', {});
+          res.json({ success: true });
+      } else {
+          res.status(404).json({ error: 'Folder not found' });
+      }
+  } catch(e) {
+      res.status(500).json({ error: 'Failed to delete folder' });
+  }
+});
+
+app.put('/api/video/edit', requireAuth, requireVideoManagement, (req, res) => {
+  const { originalPath, newTitle, newDescription } = req.body;
+  if (!originalPath || !newTitle) return res.status(400).json({ error: 'Original path and new title required' });
+  
+  const fullOriginalPath = path.join(BASE_DIR, originalPath);
+  const normalizedOriginalPath = path.normalize(fullOriginalPath);
+  if (!normalizedOriginalPath.startsWith(BASE_DIR)) {
+      return res.status(403).json({ error: 'Invalid path' });
+  }
+
+  try {
+      if (fs.existsSync(normalizedOriginalPath)) {
+          const dir = path.dirname(normalizedOriginalPath);
+          const ext = path.extname(normalizedOriginalPath);
+          const oldBaseName = path.basename(normalizedOriginalPath, ext);
+          const newBaseName = newTitle.replace(/[<>:"/\\|?*]+/g, '_'); // sanitize filename
+          
+          const newPath = path.join(dir, newBaseName + ext);
+          
+          if (newBaseName !== oldBaseName) {
+              if (fs.existsSync(newPath)) {
+                  return res.status(400).json({ error: 'A file with the new title already exists' });
+              }
+              // Rename main file
+              fs.renameSync(normalizedOriginalPath, newPath);
+              
+              // Rename metadata files if they exist
+              const oldInfoJson = path.join(dir, oldBaseName + '.info.json');
+              const newInfoJson = path.join(dir, newBaseName + '.info.json');
+              if (fs.existsSync(oldInfoJson)) fs.renameSync(oldInfoJson, newInfoJson);
+              
+              const oldDescription = path.join(dir, oldBaseName + '.description');
+              const newDescriptionPath = path.join(dir, newBaseName + '.description');
+              if (fs.existsSync(oldDescription)) fs.renameSync(oldDescription, newDescriptionPath);
+          }
+          
+          // Write/Update description
+          if (newDescription !== undefined) {
+              const descPath = path.join(dir, newBaseName + '.description');
+              fs.writeFileSync(descPath, newDescription);
+          }
+
+          broadcastEvent('refresh', {});
+          res.json({ success: true });
+      } else {
+          res.status(404).json({ error: 'Video not found' });
+      }
+  } catch(e) {
+      console.error(e);
+      res.status(500).json({ error: 'Failed to edit video' });
+  }
+});
+
 app.post('/api/shutdown', requireAuth, requireAdmin, (req, res) => {
   res.json({ message: 'Server is shutting down...' });
   console.log('Shutdown requested by admin. Exiting in 1 second...');

@@ -1037,3 +1037,74 @@ body {
     font-size: 0.8rem;
     color: var(--text-muted);
 }
+
+/* Explorer View */
+.catalog-container.view-explorer {
+    padding: 0 4% 30px 4%;
+}
+.explorer-breadcrumb {
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+    padding: 10px;
+    background: #222;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.explorer-breadcrumb span {
+    color: #e5e5e5;
+    cursor: pointer;
+}
+.explorer-breadcrumb span:hover {
+    color: var(--accent);
+    text-decoration: underline;
+}
+.explorer-list {
+    display: flex;
+    flex-direction: column;
+}
+.explorer-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid #333;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.explorer-row:hover {
+    background: #2f2f2f;
+}
+.explorer-row-icon {
+    font-size: 1.5rem;
+    margin-right: 15px;
+    width: 30px;
+    text-align: center;
+    color: #888;
+}
+.explorer-row-title {
+    flex: 1;
+    font-size: 1rem;
+    color: #e5e5e5;
+}
+.explorer-row-actions {
+    display: flex;
+    gap: 10px;
+}
+.explorer-btn {
+    background: transparent;
+    color: #e5e5e5;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    font-size: 1rem;
+    border-radius: 3px;
+    transition: color 0.2s, background 0.2s;
+}
+.explorer-btn:hover {
+    background: #444;
+}
+.explorer-btn.delete:hover {
+    background: rgba(255, 0, 0, 0.7);
+    color: white;
+}

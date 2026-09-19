@@ -532,6 +532,14 @@ function showCatalog(filter = 'all', event = null) {
 function renderCatalog(items, query = '') {
     catalogContainer.innerHTML = '';
     
+    if (localStorage.getItem(VIEW_MODE_KEY) === 'explorer') {
+        heroSection.style.display = 'none';
+        catalogContainer.style.marginTop = '80px';
+        clearInterval(heroAutoRotateInterval);
+        renderExplorer(items, query);
+        return;
+    }
+    
     function filterNodes(nodes) {
         let result = [];
         for (const item of nodes) {
@@ -854,7 +862,8 @@ function createVideoRow(title, videos) {
             <div class="thumbnail-wrapper">
                 <i class="fa-solid fa-film thumbnail-placeholder"></i>
                 ${progressHtml}
-                ${canManageVideos ? `<button class="delete-video-btn" onclick="deleteVideo('${video.path.replace(/'/g, "\\'")}', event)" style="position:absolute; top:5px; right:5px; background:rgba(255,0,0,0.7); color:white; border:none; border-radius:3px; cursor:pointer; padding: 4px; z-index: 20;"><i class="fa-solid fa-trash"></i></button>` : ''}
+                ${canManageVideos ? `<button class="delete-video-btn" onclick="deleteVideo('${video.path.replace(/'/g, "\\'")}', event)" style="position:absolute; top:5px; right:5px; background:rgba(255,0,0,0.7); color:white; border:none; border-radius:3px; cursor:pointer; padding: 4px; z-index: 20;"><i class="fa-solid fa-trash"></i></button>
+                <button class="edit-video-btn" onclick='openEditVideoModal(${JSON.stringify(video).replace(/'/g, "&#39;")}, event)' style="position:absolute; top:5px; right:35px; background:rgba(0,123,255,0.7); color:white; border:none; border-radius:3px; cursor:pointer; padding: 4px; z-index: 20;"><i class="fa-solid fa-pen"></i></button>` : ''}
             </div>
             <div class="video-card-info">
                 <div class="video-card-title" title="${video.name}">${video.name.replace(/\.[^/.]+$/, "").length > 28 ? video.name.replace(/\.[^/.]+$/, "").substring(0, 28) + '...' : video.name.replace(/\.[^/.]+$/, "")}</div>
@@ -867,7 +876,9 @@ function createVideoRow(title, videos) {
         generateThumbnail(video.url).then(thumb => {
             if (thumb) {
                 const wrap = card.querySelector('.thumbnail-wrapper');
-                wrap.innerHTML = `<img src="${thumb}" alt="thumbnail">${progressHtml}`;
+                wrap.innerHTML = `<img src="${thumb}" alt="thumbnail">${progressHtml}
+                ${canManageVideos ? `<button class="delete-video-btn" onclick="deleteVideo('${video.path.replace(/'/g, "\\'")}', event)" style="position:absolute; top:5px; right:5px; background:rgba(255,0,0,0.7); color:white; border:none; border-radius:3px; cursor:pointer; padding: 4px; z-index: 20;"><i class="fa-solid fa-trash"></i></button>
+                <button class="edit-video-btn" onclick='openEditVideoModal(${JSON.stringify(video).replace(/'/g, "&#39;")}, event)' style="position:absolute; top:5px; right:35px; background:rgba(0,123,255,0.7); color:white; border:none; border-radius:3px; cursor:pointer; padding: 4px; z-index: 20;"><i class="fa-solid fa-pen"></i></button>` : ''}`;
             }
         });
     });
@@ -919,9 +930,11 @@ function createPlaylistRow(title, folders) {
             setupHoverPreview(card, folder.innerVideos[0]);
         }
         
+        const canManageVideos = localStorage.getItem(ROLE_KEY) === 'admin' || localStorage.getItem('streamhub_canManageVideos') === 'true';
         card.innerHTML = `
             <div class="thumbnail-wrapper">
                 <i class="fa-solid fa-folder-open thumbnail-placeholder"></i>
+                ${canManageVideos ? `<button class="delete-video-btn" onclick="deleteFolder('${folder.path.replace(/'/g, "\\'")}', event)" style="position:absolute; top:5px; right:5px; background:rgba(255,0,0,0.7); color:white; border:none; border-radius:3px; cursor:pointer; padding: 4px; z-index: 20;"><i class="fa-solid fa-trash"></i></button>` : ''}
             </div>
             <div class="video-card-info">
                 <div class="video-card-title" title="${folder.name}">${folder.name.length > 28 ? folder.name.substring(0, 28) + '...' : folder.name}</div>
@@ -935,7 +948,9 @@ function createPlaylistRow(title, folders) {
             generateThumbnail(folder.innerVideos[0].url).then(thumb => {
                 if (thumb) {
                     const wrap = card.querySelector('.thumbnail-wrapper');
-                    wrap.innerHTML = `<img src="${thumb}" alt="thumbnail">`;
+                    const canManageVideos = localStorage.getItem(ROLE_KEY) === 'admin' || localStorage.getItem('streamhub_canManageVideos') === 'true';
+                    wrap.innerHTML = `<img src="${thumb}" alt="thumbnail">
+                    ${canManageVideos ? `<button class="delete-video-btn" onclick="deleteFolder('${folder.path.replace(/'/g, "\\'")}', event)" style="position:absolute; top:5px; right:5px; background:rgba(255,0,0,0.7); color:white; border:none; border-radius:3px; cursor:pointer; padding: 4px; z-index: 20;"><i class="fa-solid fa-trash"></i></button>` : ''}`;
                 }
             });
         }
@@ -1383,6 +1398,7 @@ window.changeViewMode = function(mode) {
     if (mode !== 'default') {
         catalogContainer.classList.add(`view-${mode}`);
     }
+    renderCatalog(globalFiles, document.getElementById('search-input').value.toLowerCase());
 };
 
 window.copyShareLink = function(url, event) {
@@ -1429,3 +1445,223 @@ function fallbackCopyTextToClipboard(text) {
 // Start
 initViewMode();
 checkAuth();
+
+// --- Delete Folder Logic ---
+async function deleteFolder(path, event) {
+    if (event) event.stopPropagation();
+    if (!confirm('Are you sure you want to delete this folder and all its contents?')) return;
+    try {
+        const res = await apiFetch('/api/folder', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folderPath: path })
+        });
+        if (res.ok) {
+            showToast('Folder deleted');
+            fetchFiles();
+        } else {
+            const data = await res.json();
+            showToast(data.error, 'error');
+        }
+    } catch(e) {
+        showToast('Failed to delete folder', 'error');
+    }
+}
+
+// --- Edit Video Logic ---
+window.openEditVideoModal = function(video, event) {
+    if (event) event.stopPropagation();
+    const titleInput = document.getElementById('edit-video-title');
+    const descInput = document.getElementById('edit-video-description');
+    const pathInput = document.getElementById('edit-video-original-path');
+    
+    titleInput.value = video.name.replace(/\.[^/.]+$/, "");
+    pathInput.value = video.path;
+    descInput.value = 'Loading...';
+    
+    if (video.descriptionUrl) {
+        fetch(video.descriptionUrl + `?token=${getToken()}`)
+            .then(res => res.text())
+            .then(text => descInput.value = text)
+            .catch(() => descInput.value = '');
+    } else {
+        descInput.value = '';
+    }
+    
+    openModal('edit-video-modal');
+};
+
+document.getElementById('edit-video-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const originalPath = document.getElementById('edit-video-original-path').value;
+    const newTitle = document.getElementById('edit-video-title').value;
+    const newDescription = document.getElementById('edit-video-description').value;
+    
+    try {
+        const res = await apiFetch('/api/video/edit', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ originalPath, newTitle, newDescription })
+        });
+        if (res.ok) {
+            showToast('Video updated successfully');
+            closeModal('edit-video-modal');
+            fetchFiles();
+        } else {
+            const data = await res.json();
+            showToast(data.error, 'error');
+        }
+    } catch(err) {
+        showToast('Failed to update video', 'error');
+    }
+});
+
+// --- Explorer View Logic ---
+let explorerCurrentPath = '';
+
+function renderExplorer(items, query) {
+    catalogContainer.innerHTML = '';
+    
+    // Build Breadcrumb
+    const breadcrumb = document.createElement('div');
+    breadcrumb.className = 'explorer-breadcrumb';
+    const parts = explorerCurrentPath ? explorerCurrentPath.split('/') : [];
+    
+    let bcHtml = `<span onclick="navigateToExplorerPath('')"><i class="fa-solid fa-home"></i> Root</span>`;
+    let currentWalk = '';
+    parts.forEach(part => {
+        if (!part) return;
+        currentWalk += (currentWalk ? '/' : '') + part;
+        const safeWalk = currentWalk.replace(/'/g, "\\'");
+        bcHtml += ` <i class="fa-solid fa-chevron-right" style="font-size:0.8rem; margin:0 5px; color:#666;"></i> <span onclick="navigateToExplorerPath('${safeWalk}')">${part}</span>`;
+    });
+    breadcrumb.innerHTML = bcHtml;
+    catalogContainer.appendChild(breadcrumb);
+    
+    // Find current folder items
+    let currentItems = items;
+    if (explorerCurrentPath) {
+        const targetNode = findNodeByPath(items, explorerCurrentPath);
+        if (targetNode && targetNode.children) {
+            currentItems = targetNode.children;
+        } else {
+            currentItems = [];
+        }
+    }
+    
+    // Filter by query if any
+    if (query) {
+        const flatFiltered = [];
+        function searchNodes(nodes) {
+            for (const node of nodes) {
+                if (node.name.toLowerCase().includes(query)) {
+                    flatFiltered.push(node);
+                }
+                if (node.type === 'folder' && node.children) {
+                    searchNodes(node.children);
+                }
+            }
+        }
+        searchNodes(currentItems);
+        currentItems = flatFiltered;
+    }
+    
+    const list = document.createElement('div');
+    list.className = 'explorer-list';
+    
+    if (currentItems.length === 0) {
+        list.innerHTML = '<div style="padding: 20px; color: #888;">This folder is empty</div>';
+    } else {
+        const canManageVideos = localStorage.getItem(ROLE_KEY) === 'admin' || localStorage.getItem('streamhub_canManageVideos') === 'true';
+        currentItems.forEach(item => {
+            const row = document.createElement('div');
+            row.className = 'explorer-row';
+            
+            let iconHtml = '';
+            let progressHtml = '';
+            
+            if (item.type === 'folder') {
+                iconHtml = '<i class="fa-solid fa-folder" style="color: #ecc94b; font-size: 1.2rem;"></i>';
+                const count = item.children ? item.children.length : 0;
+                progressHtml = `<span style="font-size:0.85rem; color:#888; margin-right: 20px;">${count} item${count !== 1 ? 's' : ''}</span>`;
+            } else {
+                iconHtml = '<i class="fa-solid fa-film" style="color: #90cdf4; font-size: 1.2rem;"></i>';
+                const history = watchHistory[item.path];
+                if (history && history.progress > 0 && history.duration > 0) {
+                    const percent = Math.min(100, Math.round((history.progress / history.duration) * 100));
+                    progressHtml = `
+                        <div style="display:flex; align-items:center; gap:10px; width:150px; margin-right: 20px;">
+                            <div style="flex:1; background:#444; height:6px; border-radius:3px; overflow:hidden;">
+                                <div style="width:${percent}%; background:var(--accent); height:100%;"></div>
+                            </div>
+                            <span style="font-size:0.85rem; color:#ccc; min-width:35px; text-align:right;">${percent}%</span>
+                        </div>
+                    `;
+                }
+            }
+            
+            const name = item.type === 'folder' ? item.name : item.name.replace(/\.[^/.]+$/, "");
+            
+            let actions = '';
+            if (canManageVideos) {
+                if (item.type === 'folder') {
+                    actions = `<button class="explorer-btn delete" onclick="deleteFolder('${item.path.replace(/'/g, "\\'")}', event)" title="Delete"><i class="fa-solid fa-trash"></i></button>`;
+                } else {
+                    actions = `
+                        <button class="explorer-btn" onclick='openEditVideoModal(${JSON.stringify(item).replace(/'/g, "&#39;")}, event)' title="Edit"><i class="fa-solid fa-pen"></i></button>
+                        <button class="explorer-btn delete" onclick="deleteVideo('${item.path.replace(/'/g, "\\'")}', event)" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                    `;
+                }
+            }
+            
+            row.innerHTML = `
+                <div class="explorer-row-icon" style="position:relative; width:64px; height:36px; display:flex; align-items:center; justify-content:center; background:#222; border-radius:4px; overflow:hidden; margin-right:15px; flex-shrink:0;">
+                    ${iconHtml}
+                </div>
+                <div class="explorer-row-title">${name}</div>
+                <div class="explorer-row-progress">${progressHtml}</div>
+                <div class="explorer-row-actions">${actions}</div>
+            `;
+            
+            if (item.type !== 'folder') {
+                const iconBox = row.querySelector('.explorer-row-icon');
+                setupHoverPreview(iconBox, item);
+                generateThumbnail(item.url).then(thumb => {
+                    if (thumb) {
+                        // ensure we don't overwrite the hover preview video element if it's currently active
+                        if (!iconBox.querySelector('.card-video-preview')) {
+                            iconBox.innerHTML = `<img src="${thumb}" style="width:100%; height:100%; object-fit:cover;">`;
+                        }
+                    }
+                });
+            }
+            
+            row.onclick = () => {
+                if (item.type === 'folder') {
+                    navigateToExplorerPath(item.path);
+                } else {
+                    playVideo(item);
+                }
+            };
+            
+            list.appendChild(row);
+        });
+    }
+    catalogContainer.appendChild(list);
+}
+
+function findNodeByPath(nodes, path) {
+    for (const node of nodes) {
+        if (node.path === path) return node;
+        if (node.type === 'folder' && node.children) {
+            const found = findNodeByPath(node.children, path);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
+window.navigateToExplorerPath = function(path) {
+    explorerCurrentPath = path;
+    renderCatalog(globalFiles, document.getElementById('search-input').value.toLowerCase());
+};

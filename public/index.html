@@ -36,6 +36,7 @@
                     <option value="big" style="color: #000;">Big Thumbnail</option>
                     <option value="medium" style="color: #000;">Medium Thumbnail</option>
                     <option value="thumbnail" style="color: #000;">Small Thumbnail</option>
+                    <option value="explorer" style="color: #000;">File Explorer</option>
                 </select>
             </div>
             <div class="nav-icon" id="add-video-icon" onclick="openModal('add-video-modal')" title="Add Video" style="display:none;">
@@ -293,6 +294,30 @@
                         <input type="text" id="ytdlp-path-new" placeholder="Type new folder name..." style="display: none; margin-top: 10px;">
                     </div>
                     <button type="submit" class="btn btn-primary">Download to Server</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Video Modal -->
+    <div class="modal-overlay" id="edit-video-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Edit Video</h3>
+                <button class="close-btn" onclick="closeModal('edit-video-modal')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-video-form">
+                    <input type="hidden" id="edit-video-original-path">
+                    <div class="input-group">
+                        <label for="edit-video-title">Title</label>
+                        <input type="text" id="edit-video-title" required>
+                    </div>
+                    <div class="input-group" style="margin-top: 15px;">
+                        <label for="edit-video-description">Description</label>
+                        <textarea id="edit-video-description" rows="5" style="width: 100%; padding: 10px; border-radius: 4px; background: #333; color: #fff; border:none; resize: vertical;"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="margin-top: 20px;">Save Changes</button>
                 </form>
             </div>
         </div>
