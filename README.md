@@ -15,8 +15,6 @@ StreamEdu is a premium, Netflix-inspired local video streaming platform built to
 
 ### Prerequisites
 - [Node.js](https://nodejs.org/en/) installed on your system.
-- `yt-dlp` (`yt-dlp.exe` for Windows) placed in the root folder to enable high-quality video/audio fetching.
-- `ffmpeg` installed on your system or placed in the root folder. This is heavily recommended to allow `yt-dlp` to merge separate high-quality video and audio tracks.
 
 ### Installation & Deployment
 To properly install and deploy StreamEdu so that it works seamlessly, follow these steps:
@@ -28,15 +26,13 @@ To properly install and deploy StreamEdu so that it works seamlessly, follow the
    ```
 
 2. **Install dependencies:**
-   Ensure you run this command in the project root to install all required Node modules (like `express`, `multer`, and `cors`).
+   Ensure you run this command in the project root to install all required Node modules.
    ```bash
    npm install
    ```
+   *Note: This will automatically download and set up `yt-dlp` and `ffmpeg` for you! You do not need to install them manually.*
 
-3. **yt-dlp Setup (Crucial for Downloads):**
-   Make sure you have `yt-dlp.exe` in the root directory. To ensure that when you upload using a YouTube URL, the engine successfully combines the best video and audio streams into the same file, you must also have `ffmpeg` installed on your system.
-
-4. **Directory Setup:**
+3. **Directory Setup:**
    The `Videos` folder is intentionally excluded from the repository. The server will automatically generate it and a `data` folder on first launch.
 
 ### Running the App

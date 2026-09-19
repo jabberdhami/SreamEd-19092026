@@ -1,9 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+const os = require('os');
 
 const BASE_DIR = path.join(__dirname, 'Videos');
-const ytDlpPath = path.join(__dirname, 'yt-dlp.exe');
+const ytDlpFilename = os.platform() === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
+const ytDlpPath = path.join(__dirname, ytDlpFilename);
 
 function getVideosMissingMetadata(dir) {
     let missing = [];

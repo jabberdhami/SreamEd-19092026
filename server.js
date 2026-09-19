@@ -4,6 +4,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const os = require('os');
+const ffmpegPath = require('ffmpeg-static');
 const { exec, spawn } = require('child_process');
 
 const app = express();
@@ -356,7 +358,8 @@ app.post('/api/download', requireAuth, requireVideoManagement, (req, res) => {
   const downloadPath = path.join(BASE_DIR, targetFolder);
   if (!fs.existsSync(downloadPath)) fs.mkdirSync(downloadPath, { recursive: true });
 
-  const ytDlpPath = path.join(WORKSPACE_DIR, 'yt-dlp.exe');
+  const ytDlpFilename = os.platform() === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
+  const ytDlpPath = path.join(WORKSPACE_DIR, ytDlpFilename);
   const outputTemplate = downloadPath.replace(/\\/g, '/') + '/%(playlist_title|)s%(playlist_title&/|)s%(title)s.%(ext)s';
   const args = [
     url,
@@ -364,7 +367,8 @@ app.post('/api/download', requireAuth, requireVideoManagement, (req, res) => {
     '-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
     '--write-description',
     '--write-info-json',
-    '--embed-chapters'
+    '--embed-chapters',
+    '--ffmpeg-location', ffmpegPath
   ];
   
   const child = spawn(ytDlpPath, args);
